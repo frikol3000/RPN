@@ -28,13 +28,16 @@ class RPN:
 
     def forward_RPN(self, feature_map, anchors):
         for i, region in enumerate(self.region_extraction(feature_map)):
-            cls = (self.forward_cls(self.getFeatures(region)))
+            feature = self.getFeatures(region)
+            cls = (self.forward_cls(feature))
+            bbox = (self.forward_bbox(feature))
             for j, anchor in enumerate(anchors[0+(i*9):9+(i*9)]):
                 anchor.setCls(softmax(cls[j:j+2]))
+                anchor.setBbox(bbox[j:j+4])
         return  anchors
 
     def getLoss_function(self, target, proposals):
-                return loss
+        return loss
 
 
 

@@ -91,6 +91,9 @@ for i in onlyfiles:
 
     target = getTarget(anchors)
 
-    r.getLoss_function(target, new_anchors)
+    for i in new_anchors:
+        print(i.getBbox())
+
+    # r.getLoss_function(target, new_anchors)
 
 
