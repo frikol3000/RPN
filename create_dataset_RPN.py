@@ -3,7 +3,8 @@ from os import listdir
 from os.path import isfile, join
 import cv2
 import generate_anchors as anch
-from Iou_calc import bb_intersection_over_union
+from utils import bb_intersection_over_union
+from utils import calc_reggression
 from RPN import RPN
 from VGG16 import VGG16_model
 
@@ -55,17 +56,15 @@ def setIOU(anchors, gr):
             if bb_intersection_over_union(j, i.getPoints()) > 0:
                 i.setIou(bb_intersection_over_union(j, i.getPoints()))
 
-def getTarget(anchors):
+def getTarget(gr, anchors):
 
     target = []
 
     for anchor in anchors:
         if anchor.getIou() >= 0.5:
-            anchor.setCls(1)
-            target.append(anchor)
-        elif anchor.getIou() < 0.3:
-            anchor.setCls(0)
-            target.append(anchor)
+            target.append((1, anchor.getPoints(), calc_reggression(gr, anchor.getPoints())))
+        elif anchor.getIou() < 0.3 and anchor.getIou() > 0.0:
+            target.append((0, anchor.getPoints()))
 
     return target
 
@@ -79,9 +78,9 @@ for i in onlyfiles:
     temp = cv2.resize(temp, (800, 640))
     temp, anchors = anch.generate_anchors(temp, createPoints(temp)[0], [(1,1), (0.8, 1.2), (1.2, 0.8)], [32**2, 48**2, 64**2])
 
-    temp = cv2.rectangle(temp, (gr[0][0], gr[0][1]), (gr[0][2], gr[0][3]), (0, 255, 0))
-    cv2.imshow("2", temp)
-    cv2.waitKey()
+    # temp = cv2.rectangle(temp, (gr[0][0], gr[0][1]), (gr[0][2], gr[0][3]), (0, 255, 0))
+    # cv2.imshow("2", temp)
+    # cv2.waitKey()
 
     setIOU(anchors, gr)
 
@@ -89,11 +88,9 @@ for i in onlyfiles:
     r = RPN()
     new_anchors = r.forward_RPN(vgg.extract_feature(temp)[0], anchors)
 
-    target = getTarget(anchors)
+    target = getTarget(gr[0], anchors)
 
-    for i in new_anchors:
-        print(i.getBbox())
+    print(r.getLoss_function(target, new_anchors))
 
-    # r.getLoss_function(target, new_anchors)
 
 

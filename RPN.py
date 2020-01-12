@@ -1,6 +1,9 @@
 from Conv1x1 import Conv1x1
 from Conv3x3 import Conv3x3
-from softmax import softmax
+from utils import softmax
+from utils import CrossEntropy
+from utils import mean_squared_diff
+from utils import calc_reggression
 
 class RPN:
     def __init__(self):
@@ -37,7 +40,21 @@ class RPN:
         return  anchors
 
     def getLoss_function(self, target, proposals):
+
+        loss = 0
+
+        for t in target:
+            for proposal in proposals:
+                if t[1] == proposal.getPoints():
+                    if t[0] == 1:
+                        loss += 0.5 * CrossEntropy(proposal.getCls(), t[0]) + 0.5 * mean_squared_diff(t[2], calc_reggression(proposal.getBbox(), proposal.getPoints()))
+                    else:
+                        loss += 0.5 * CrossEntropy(proposal.getCls(), t[0])
+
         return loss
+
+    def mutate(self, mutate_rate):
+        pass
 
 
 

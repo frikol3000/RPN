@@ -1,3 +1,12 @@
+from numpy import log
+import numpy as np
+
+def CrossEntropy(yHat, y):
+    if y == 1:
+      return -log(yHat)
+    else:
+      return -log(1 - yHat)
+
 def bb_intersection_over_union(boxA, boxB):
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(boxA[0], boxB[0])
@@ -22,3 +31,22 @@ def bb_intersection_over_union(boxA, boxB):
 
     # return the intersection over union value
     return iou
+
+def softmax(x):
+    return np.exp(x[0]) / np.sum(np.exp(x), axis=0)
+
+def mean_squared_diff(yHat, y):
+    yHat = np.array(yHat)
+    y = np.array(y)
+    return np.sum(np.square(yHat-y))
+
+def calc_reggression(bbox, anchor):
+    x, y, h, w = (bbox[0] - bbox[2])/2, (bbox[1] - bbox[3])/2, np.abs(bbox[1] - (bbox[1] - bbox[3])/2), np.abs(bbox[0] - (bbox[0] - bbox[2])/2)
+    xA, yA, hA, wA = (anchor[0] - anchor[2]) / 2, (anchor[1] - anchor[3]) / 2, np.abs(anchor[1] - (anchor[1] - anchor[3]) / 2), np.abs(anchor[0] - (anchor[0] - anchor[2]) / 2)
+
+    tx = (x-xA)/wA
+    ty = (y-yA)/hA
+    th = np.log(h/hA)
+    tw = np.log(w/wA)
+
+    return [tx, ty, th, tw]
