@@ -11,3 +11,8 @@ class Conv3x3:
         output = (np.sum(region * self.filters, axis=(0,1)).reshape((1, 1, 512)))
 
         return output
+
+    def mutate(self, mutation_rate):
+        #print(self.filters[0][0][0])
+        self.filters += np.random.normal(0.0, mutation_rate, (self.filters.shape))
+        #print(self.filters[0][0][0])

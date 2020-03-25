@@ -1,5 +1,4 @@
-import re
-from os import listdir
+from os import listdir, getcwd, remove
 from os.path import isfile, join
 import cv2
 import generate_anchors as anch
@@ -7,25 +6,28 @@ from utils import bb_intersection_over_union
 from utils import calc_reggression
 from RPN import RPN
 from VGG16 import VGG16_model
+from pickle import load, dump
+import numpy as np
+import copy
+import operator
+import random
 
-train_data = 100
-img = []
-img_anchors = {}
+MUTATION_RATE = 0.05
+NUMBER_OF_EPOCH = 200
+ITERATIONS = 10
+MINI_BATCH = 128
+IMG_SHAPE = (720, 1280, 3)
 
-onlyfiles = [f for f in listdir("F:\курс\datasetcreator\dataset") if isfile(join("F:\курс\datasetcreator\dataset", f))]
+TRAIN_DATA_DIR = 'F:\Python Projects\datasetcreator\images\\train\\'
+TEST_DATA_DIR = ""
+ANCHORS_RATIO = [(1,1), (0.8, 1.2), (1.2, 0.8)]
+ANCHORS_SIZE = [96**2, 128**2, 256**2]
 
-def getGroundTruthBBoxes(str):
-
+def getGroundTruthBBoxes(train_sample):
     gr = []
-    pattern = r"(\d+, \d+, \d+, \d+)"
-
-    str_gr = re.findall(pattern, str)
-    for i in str_gr:
-        o = i.split(", ")
-        o = [int(x) for x in o]
-        for count, element in enumerate(o, 1):  # Start counting from 1
-            if count % 4 == 0:
-                gr.append(o)
+    for i in train_sample:
+        if isinstance(i, list):
+            gr.append(i)
 
     return gr
 
@@ -50,47 +52,157 @@ def createPoints(img):
 
     return points, points_feature_map
 
-def setIOU(anchors, gr):
-    for i in anchors:
-        for j in gr:
-            if bb_intersection_over_union(j, i.getPoints()) > 0:
-                i.setIou(bb_intersection_over_union(j, i.getPoints()))
-
-def getTarget(gr, anchors):
+def getTarget(anchors, gr, img):
 
     target = []
 
-    for anchor in anchors:
-        if anchor.getIou() >= 0.5:
-            target.append((1, anchor.getPoints(), calc_reggression(gr, anchor.getPoints())))
-        elif anchor.getIou() < 0.3 and anchor.getIou() > 0.0:
-            target.append((0, anchor.getPoints()))
+    for i in anchors:
+        for j in gr:
+            anch_IOU = bb_intersection_over_union(j, i.getPoints())
+            # if anch_IOU > 0.5:
+            #     points = i.getPoints()
+            #     img = cv2.rectangle(img, (j[0], j[1]), (j[2], j[3]), (0, 255, 0))
+            #     img = cv2.rectangle(img, (points[0], points[1]), (points[2], points[3]), (0, 255, 0))
+            #     cv2.imshow("test", img)
+            #     cv2.waitKey()
+            if anch_IOU > 0:
+                if anch_IOU < 0.3:
+                    i.setCls(0)
+                    target.append(i)
+                else:
+                    i.setCls(1)
+                    i.setBbox(calc_reggression(j, i.getPoints()))
+                    target.append(i)
+    return list(dict.fromkeys(target))
 
-    return target
+def clearTarget(target):
+    cleared_target = {}
+    object_target = []
+    nonobject_target = []
+
+    for t in range(len(target)):
+        if target[t].getCls() == 1:
+            object_target.append(target[t])
+
+    for t in range(len(target)):
+        if target[t].getCls() == 0:
+            nonobject_target.append(target[t])
+
+    try:
+        target = object_target[0:MINI_BATCH] + nonobject_target[0:MINI_BATCH]
+    except:
+        target = object_target + nonobject_target[0:MINI_BATCH]
+
+    for t in target:
+        cleared_target[t.getIndex()] = []
+    for t in target:
+        cleared_target[t.getIndex()].append(t)
+
+    return cleared_target
+
+def create_ofsprings(ind_rpn, mutation_rate):
+
+    ofsprings = {}
+
+    for i in range(200):
+        temp = copy.deepcopy(ind_rpn)
+        temp.mutate(mutation_rate)
+        #print(temp.Conv3x3.filters[0][0][0])
+        ofsprings[temp] = 0
+
+    return ofsprings
 
 
-for i in onlyfiles:
+def model_saving(model, loss):
+    path = getcwd()
+    for i in listdir(path):
+        if isfile(join(path, i)) and 'latest_model_with_' in i:
+            #print(i)
+            remove(i)
 
-    temp = cv2.imread("dataset\\" + i)
+    with open("latest_model_with_" + str(loss) + "_loss", "wb") as f:
+        dump(model, f)
 
-    gr = getGroundTruthBBoxes(i)
+# def getTarget(gr, anchors):
+#
+#     target = []
+#
+#     for anchor in anchors:
+#         anch_IOU = anchor.getIou()
+#         if anch_IOU >= 0.5:
+#             target.append((1, anchor.getPoints(), calc_reggression(gr, anchor.getPoints())))
+#         elif anch_IOU < 0.3 and anch_IOU > 0.0:
+#             target.append((0, anchor.getPoints()))
+#
+#     return target
+#
+# def getClear_Target(anchors):
+#     unclear_anchors = []
+#     for i in anchors:
+#         if i.getCls() >= 0:
+#             unclear_anchors.append(i)
+#     return unclear_anchors
+#     pass
 
-    temp = cv2.resize(temp, (800, 640))
-    temp, anchors = anch.generate_anchors(temp, createPoints(temp)[0], [(1,1), (0.8, 1.2), (1.2, 0.8)], [32**2, 48**2, 64**2])
+if __name__ == '__main__':
 
-    # temp = cv2.rectangle(temp, (gr[0][0], gr[0][1]), (gr[0][2], gr[0][3]), (0, 255, 0))
-    # cv2.imshow("2", temp)
-    # cv2.waitKey()
+    ind_rpn = {}
 
-    setIOU(anchors, gr)
+    vgg = VGG16_model(IMG_SHAPE)
 
-    vgg = VGG16_model(temp.shape)
-    r = RPN()
-    new_anchors = r.forward_RPN(vgg.extract_feature(temp)[0], anchors)
+    for i in range(200):
+        ind_rpn[RPN()] = 0
 
-    target = getTarget(gr[0], anchors)
+    with open("train_data.pickle", 'rb') as f:
+        train_data = load(f)
+        train_data = np.array(train_data)
 
-    print(r.getLoss_function(target, new_anchors))
+    for epoch in range(NUMBER_OF_EPOCH):
+
+        print('--- Epoch %d ---' % (epoch + 1))
+
+        for iteration in range(ITERATIONS):
+
+            sample = random.choice(train_data)
+
+            img = cv2.imread(TRAIN_DATA_DIR + sample[-1])
+
+            extracted_features = vgg.extract_feature(img)[0]
+
+            gr = getGroundTruthBBoxes(sample)
+
+            # img = cv2.resize(img, (600, 800))
+
+            img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
+
+            # for g in gr:
+            #     img = cv2.rectangle(img, (g[0], g[1]), (g[2], g[3]), (0, 255, 0))
+            # cv2.imshow("test", img)
+            # cv2.waitKey()
+
+            target = getTarget(anchors, gr, img)
+
+            target = clearTarget(target)
+
+            pred_anchors = copy.deepcopy(anchors)
+
+            for i in ind_rpn:
+                ind_rpn[i] = i.getLoss_function(target, pred_anchors, extracted_features)
+
+            best_ind = min(ind_rpn.items(), key=operator.itemgetter(1))[0]
+
+            print("Iteration ends with " + str(ind_rpn[best_ind]) + " loss")
+            print(ind_rpn)
+
+            model_saving(best_ind, ind_rpn[best_ind])
+
+            ind_rpn = create_ofsprings(best_ind, MUTATION_RATE)
+                # for gr_box in gr:
+                #     t = getTarget(gr_box, anchors)
+                #     getTarget_minibatch(t)
+                    # target.append()
+
+                # print(r.getLoss_function(target, new_anchors))
 
 
 

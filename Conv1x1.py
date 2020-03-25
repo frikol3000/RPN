@@ -14,5 +14,8 @@ class Conv1x1:
         Y = np.dot(K, X)  # Matrix multiplication in the fully connected layer
         return Y.reshape(h, w, c_o)[0][0]
 
+    def mutate(self, mutation_rate):
+        self.filters += np.random.normal(0.0, mutation_rate, (self.filters.shape))
+
 
 

@@ -1,10 +1,11 @@
 class Anchor:
-    def __init__(self, cls, bbox, iou_rate, points, feature_points):
+    def __init__(self, cls, bbox, iou_rate, points, feature_points, index):
         self.__cls = cls
         self.__bbox = bbox
         self.__iou_rate = iou_rate
         self.__points = points
         self.__feature_points = feature_points
+        self.__index = index
 
     def getCls(self):
         return self.__cls
@@ -35,3 +36,9 @@ class Anchor:
 
     def setFeaturePoints(self, feature_points):
         self.__feature_points = feature_points
+
+    def getIndex(self):
+        return self.__index
+
+    def setIndex(self, index):
+        self.__index = index

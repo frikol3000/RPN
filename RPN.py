@@ -29,31 +29,35 @@ class RPN:
     def forward_bbox(self, features):
         return self.bboxConv.forward(features)
 
-    def forward_RPN(self, feature_map, anchors):
+    def forward_RPN(self, feature_map, index, anchors):
         for i, region in enumerate(self.region_extraction(feature_map)):
-            feature = self.getFeatures(region)
-            cls = (self.forward_cls(feature))
-            bbox = (self.forward_bbox(feature))
-            for j, anchor in enumerate(anchors[0+(i*9):9+(i*9)]):
-                anchor.setCls(softmax(cls[j:j+2]))
-                anchor.setBbox(bbox[j:j+4])
-        return  anchors
+            if i == index/9:
+                feature = self.getFeatures(region)
+                cls = (self.forward_cls(feature))
+                bbox = (self.forward_bbox(feature))
+                for j, anchor in enumerate(anchors[0+(i*9):9+(i*9)]):
+                    anchor.setCls(softmax(cls[j:j+2]))
+                    anchor.setBbox(bbox[j:j+4])
+                return anchors[0+(i*9):9+(i*9)]
 
-    def getLoss_function(self, target, proposals):
+    def getLoss_function(self, target, proposals, feachures):
 
         loss = 0
 
         for t in target:
-            for proposal in proposals:
-                if t[1] == proposal.getPoints():
-                    if t[0] == 1:
-                        loss += 0.5 * CrossEntropy(proposal.getCls(), t[0]) + 0.5 * mean_squared_diff(t[2], calc_reggression(proposal.getBbox(), proposal.getPoints()))
-                    else:
-                        loss += 0.5 * CrossEntropy(proposal.getCls(), t[0])
-
+            for p in self.forward_RPN(feachures, t, proposals):
+                for anch in target[t]:
+                    if anch.getPoints() == p.getPoints():
+                        if anch.getCls() == 1:
+                            loss += (1/256) * CrossEntropy(p.getCls(), anch.getCls()) + 10 * (1/6840) * mean_squared_diff(anch.getBbox(), calc_reggression(p.getBbox(), p.getPoints()))
+                        else:
+                            loss += (1/256) * CrossEntropy(p.getCls(), anch.getCls())
         return loss
 
     def mutate(self, mutate_rate):
+        self.Conv3x3.mutate(mutate_rate)
+        self.clsConv.mutate(mutate_rate)
+        self.bboxConv.mutate(mutate_rate)
         pass
 
 

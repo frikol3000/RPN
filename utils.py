@@ -2,6 +2,8 @@ from numpy import log
 import numpy as np
 
 def CrossEntropy(yHat, y):
+    if yHat == 1:
+        yHat = 0.9
     if y == 1:
       return -log(yHat)
     else:
