@@ -12,7 +12,7 @@ import copy
 import operator
 import random
 
-MUTATION_RATE = 0.05
+MUTATION_RATE = 0.005
 NUMBER_OF_EPOCH = 200
 ITERATIONS = 10
 MINI_BATCH = 128
@@ -89,9 +89,9 @@ def clearTarget(target):
             nonobject_target.append(target[t])
 
     try:
-        target = object_target[0:MINI_BATCH] + nonobject_target[0:MINI_BATCH]
+        target = random.sample(object_target, MINI_BATCH) + random.sample(nonobject_target, MINI_BATCH)
     except:
-        target = object_target + nonobject_target[0:MINI_BATCH]
+        target = object_target + random.sample(nonobject_target, MINI_BATCH)
 
     for t in target:
         cleared_target[t.getIndex()] = []
@@ -104,11 +104,13 @@ def create_ofsprings(ind_rpn, mutation_rate):
 
     ofsprings = {}
 
-    for i in range(200):
+    #print(ind_rpn.Conv3x3.filters[0][0][0])
+
+    for i in range(500):
         temp = copy.deepcopy(ind_rpn)
         temp.mutate(mutation_rate)
         #print(temp.Conv3x3.filters[0][0][0])
-        ofsprings[temp] = 0
+        ofsprings[temp] = []
 
     return ofsprings
 
@@ -150,8 +152,23 @@ if __name__ == '__main__':
 
     vgg = VGG16_model(IMG_SHAPE)
 
-    for i in range(200):
-        ind_rpn[RPN()] = 0
+    print("Load - l" + " Create new - c")
+    while(True):
+        enter = input()
+
+        if enter == 'l':
+            path = getcwd()
+            for i in listdir(path):
+                if isfile(join(path, i)) and 'latest_model_with_' in i:
+                    with open(i, 'rb') as f:
+                        model = load(f)
+                        ind_rpn = create_ofsprings(model, MUTATION_RATE)
+            break
+
+        elif enter == 'c':
+            for i in range(500):
+                ind_rpn[RPN()] = []
+            break
 
     with open("train_data.pickle", 'rb') as f:
         train_data = load(f)
@@ -187,22 +204,20 @@ if __name__ == '__main__':
             pred_anchors = copy.deepcopy(anchors)
 
             for i in ind_rpn:
-                ind_rpn[i] = i.getLoss_function(target, pred_anchors, extracted_features)
+                ind_rpn[i].append(i.getLoss_function(target, pred_anchors, extracted_features))
 
-            best_ind = min(ind_rpn.items(), key=operator.itemgetter(1))[0]
+        for i in ind_rpn:
+            ind_rpn[i] = np.sum(ind_rpn[i])/ITERATIONS
 
-            print("Iteration ends with " + str(ind_rpn[best_ind]) + " loss")
-            print(ind_rpn)
+        best_ind = min(ind_rpn.items(), key=operator.itemgetter(1))[0]
 
-            model_saving(best_ind, ind_rpn[best_ind])
+        print("Epoch " + str(epoch + 1) + " ends with average loss " + str(ind_rpn[best_ind]))
 
-            ind_rpn = create_ofsprings(best_ind, MUTATION_RATE)
-                # for gr_box in gr:
-                #     t = getTarget(gr_box, anchors)
-                #     getTarget_minibatch(t)
-                    # target.append()
+        model_saving(best_ind, ind_rpn[best_ind])
 
-                # print(r.getLoss_function(target, new_anchors))
+        ind_rpn = create_ofsprings(best_ind, MUTATION_RATE)
+
+
 
 
 

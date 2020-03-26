@@ -3,7 +3,7 @@ import numpy as np
 class Conv3x3:
     def __init__(self, num_of_filters):
         self.num_of_filters = num_of_filters
-        self.filters = np.random.uniform(size=(3, 3, self.num_of_filters))/9
+        self.filters = np.random.normal(0.0, 0.1, size=(3, 3, self.num_of_filters))
 
 
     def forward(self, region):

@@ -1,11 +1,23 @@
 import cv2
 import csv
-from os import listdir
-from os.path import isfile, join, isdir
+from os import listdir, getcwd, remove
+from os.path import isfile, join
 import numpy as np
 import pickle
+import random
+from VGG16 import VGG16_model
+import generate_anchors as anch
+import RPN
 
-LABEL_DIR = 'F:\Python Projects\datasetcreator\images\\train\\train_data.csv'
+TRAIN_DATA_DIR = 'F:\Python Projects\datasetcreator\images\\train\\'
+MUTATION_RATE = 0.02
+NUMBER_OF_EPOCH = 200
+ITERATIONS = 10
+MINI_BATCH = 128
+IMG_SHAPE = (720, 1280, 3)
+
+ANCHORS_RATIO = [(1,1), (0.8, 1.2), (1.2, 0.8)]
+ANCHORS_SIZE = [96**2, 128**2, 256**2]
 
 def show_pic_with_gr(dir_to_csv):
     with open(dir_to_csv) as cvsfile:
@@ -29,20 +41,70 @@ def show_pic_with_gr(dir_to_csv):
     cv2.imshow("2", img)
     cv2.waitKey(0)
 
-class Something:
-    def __init__(self, num):
-        self.num = num
+def createPoints(img):
 
-    def change(self, num):
-        self.num += num
+    start_x = 48
+    start_y = 48
+    points = []
+    points_feature_map = []
+    h, w, _ = img.shape
 
-s = Something(5)
+    h = h//32
+    w = w//32
 
-print(s.num)
+    for i in range(h-2):
+        for j in range(w-2):
+            points.append((start_x, start_y))
+            points_feature_map.append((j, i))
+            start_x += 32
+        start_y += 32
+        start_x = 48
 
-s.change(6)
+    return points, points_feature_map
 
-print(s.num)
+
+# with open("train_data.pickle", 'rb') as f:
+#     train_data = pickle.load(f)
+#     train_data = np.array(train_data)
+#
+# path = getcwd()
+# for i in listdir(path):
+#     if isfile(join(path, i)) and 'latest_model_with_' in i:
+#         with open(i, 'rb') as f:
+#             r = pickle.load(f)
+#
+#r = RPN.RPN()
+# vgg = VGG16_model((720, 1280, 3))
+#
+# sample = random.choice(train_data)
+#
+# #img = cv2.imread(TRAIN_DATA_DIR + sample[-1])
+# img = cv2.imread("CARDS_LIVINGROOM_S_H_frame_1716.jpg")
+#
+# extracted_features = vgg.extract_feature(img)[0]
+#
+# img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
+#
+# for i in r.forward_RPN2(extracted_features, anchors):
+#     if i.getCls() > 0.999:
+#         points = i.getPoints()
+#         img = cv2.rectangle(img, (points[0], points[1]), (points[2], points[3]), (0, 255, 0))
+# cv2.imshow("test", img)
+# cv2.waitKey()
+
+
+import Conv1x1
+import Conv3x3
+
+c = Conv1x1.Conv1x1(512, 18)
+c3x3 = Conv3x3.Conv3x3(512)
+
+arr = np.random.uniform(0.0, 1.0, size=(20, 20, 512))
+
+# print(c3x3.forward(arr[0:3, 0:3]).shape)
+# print(c.forward(c3x3.forward(arr[0:3, 0:3])).shape)
+
+print(c.filters[0].shape)
 
 
 

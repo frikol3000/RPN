@@ -4,7 +4,7 @@ class Conv1x1:
     def __init__(self, in_shape, out_shape):
         self.inp = in_shape
         self.out = out_shape
-        self.filters = np.random.uniform(size=(self.out, self.inp, 1, 1))
+        self.filters = np.random.normal(0.0, 0.1, size=(self.out, self.inp, 1, 1))
 
     def forward(self, X):
         h, w, c_i = X.shape

@@ -40,6 +40,17 @@ class RPN:
                     anchor.setBbox(bbox[j:j+4])
                 return anchors[0+(i*9):9+(i*9)]
 
+    def forward_RPN2(self, feature_map, anchors):
+        for i, region in enumerate(self.region_extraction(feature_map)):
+            feature = self.getFeatures(region)
+            cls = (self.forward_cls(feature))
+            bbox = (self.forward_bbox(feature))
+            for j, anchor in enumerate(anchors[0+(i*9):9+(i*9)]):
+                anchor.setCls(softmax(cls[j:j+2]))
+                anchor.setBbox(bbox[j:j+4])
+                print("For " + str(i) + " region " + str(j) + " anchor, cls is " + str(anchor.getCls()))
+        return anchors
+
     def getLoss_function(self, target, proposals, feachures):
 
         loss = 0
@@ -51,7 +62,7 @@ class RPN:
                         if anch.getCls() == 1:
                             loss += (1/256) * CrossEntropy(p.getCls(), anch.getCls()) + 10 * (1/6840) * mean_squared_diff(anch.getBbox(), calc_reggression(p.getBbox(), p.getPoints()))
                         else:
-                            loss += (1/256) * CrossEntropy(p.getCls(), anch.getCls())
+                            loss += (1 / 256) * CrossEntropy(p.getCls(), anch.getCls())
         return loss
 
     def mutate(self, mutate_rate):
