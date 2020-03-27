@@ -12,7 +12,7 @@ import copy
 import operator
 import random
 
-MUTATION_RATE = 0.005
+MUTATION_RATE = 0.01
 NUMBER_OF_EPOCH = 200
 ITERATIONS = 10
 MINI_BATCH = 128
@@ -106,7 +106,7 @@ def create_ofsprings(ind_rpn, mutation_rate):
 
     #print(ind_rpn.Conv3x3.filters[0][0][0])
 
-    for i in range(500):
+    for i in range(200):
         temp = copy.deepcopy(ind_rpn)
         temp.mutate(mutation_rate)
         #print(temp.Conv3x3.filters[0][0][0])
@@ -166,7 +166,7 @@ if __name__ == '__main__':
             break
 
         elif enter == 'c':
-            for i in range(500):
+            for i in range(200):
                 ind_rpn[RPN()] = []
             break
 

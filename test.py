@@ -63,48 +63,49 @@ def createPoints(img):
     return points, points_feature_map
 
 
-# with open("train_data.pickle", 'rb') as f:
-#     train_data = pickle.load(f)
-#     train_data = np.array(train_data)
-#
-# path = getcwd()
-# for i in listdir(path):
-#     if isfile(join(path, i)) and 'latest_model_with_' in i:
-#         with open(i, 'rb') as f:
-#             r = pickle.load(f)
-#
-#r = RPN.RPN()
-# vgg = VGG16_model((720, 1280, 3))
-#
-# sample = random.choice(train_data)
-#
-# #img = cv2.imread(TRAIN_DATA_DIR + sample[-1])
-# img = cv2.imread("CARDS_LIVINGROOM_S_H_frame_1716.jpg")
-#
-# extracted_features = vgg.extract_feature(img)[0]
-#
-# img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
-#
-# for i in r.forward_RPN2(extracted_features, anchors):
-#     if i.getCls() > 0.999:
-#         points = i.getPoints()
-#         img = cv2.rectangle(img, (points[0], points[1]), (points[2], points[3]), (0, 255, 0))
-# cv2.imshow("test", img)
-# cv2.waitKey()
+with open("train_data.pickle", 'rb') as f:
+    train_data = pickle.load(f)
+    train_data = np.array(train_data)
+
+path = getcwd()
+for i in listdir(path):
+    if isfile(join(path, i)) and 'latest_model_with_' in i:
+        with open(i, 'rb') as f:
+            r = pickle.load(f)
+
+# r = RPN.RPN()
+vgg = VGG16_model((720, 1280, 3))
+
+sample = random.choice(train_data)
+
+#img = cv2.imread(TRAIN_DATA_DIR + sample[-1])
+img = cv2.imread("CARDS_LIVINGROOM_S_H_frame_1716.jpg")
+
+extracted_features = vgg.extract_feature(img)[0]
+
+img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
+
+for i in r.forward_RPN2(extracted_features, anchors):
+    if i.getCls() > 0.9999999:
+        points = i.getPoints()
+        img = cv2.rectangle(img, (points[0], points[1]), (points[2], points[3]), (0, 255, 0))
+cv2.imshow("test", img)
+cv2.waitKey()
 
 
-import Conv1x1
-import Conv3x3
 
-c = Conv1x1.Conv1x1(512, 18)
-c3x3 = Conv3x3.Conv3x3(512)
-
-arr = np.random.uniform(0.0, 1.0, size=(20, 20, 512))
-
-# print(c3x3.forward(arr[0:3, 0:3]).shape)
-# print(c.forward(c3x3.forward(arr[0:3, 0:3])).shape)
-
-print(c.filters[0].shape)
+# import Conv1x1
+# import Conv3x3
+#
+# c = Conv1x1.Conv1x1(512, 18)
+# c3x3 = Conv3x3.Conv3x3(512)
+#
+# arr = np.random.uniform(0.0, 1.0, size=(20, 20, 512))
+#
+# # print(c3x3.forward(arr[0:3, 0:3]).shape)
+# # print(c.forward(c3x3.forward(arr[0:3, 0:3])).shape)
+#
+# print(c.filters[0].shape)
 
 
 
