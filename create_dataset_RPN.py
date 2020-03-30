@@ -9,10 +9,11 @@ from VGG16 import VGG16_model
 from pickle import load, dump
 import numpy as np
 import copy
-import operator
+from utils import CrossEntropy
+from utils import softmax
 import random
 
-MUTATION_RATE = 0.01
+LEARNING_RATE = 0.0001
 NUMBER_OF_EPOCH = 200
 ITERATIONS = 10
 MINI_BATCH = 128
@@ -88,10 +89,15 @@ def clearTarget(target):
         if target[t].getCls() == 0:
             nonobject_target.append(target[t])
 
+    # try:
+    #     #     target = random.sample(object_target, MINI_BATCH) + random.sample(nonobject_target, MINI_BATCH)
+    #     # except:
+    #     #     target = object_target + random.sample(nonobject_target, MINI_BATCH)
+
     try:
-        target = random.sample(object_target, MINI_BATCH) + random.sample(nonobject_target, MINI_BATCH)
+        target = object_target[0:MINI_BATCH] + nonobject_target[0:MINI_BATCH]
     except:
-        target = object_target + random.sample(nonobject_target, MINI_BATCH)
+        target = object_target + nonobject_target[0:MINI_BATCH]
 
     for t in target:
         cleared_target[t.getIndex()] = []
@@ -99,21 +105,6 @@ def clearTarget(target):
         cleared_target[t.getIndex()].append(t)
 
     return cleared_target
-
-def create_ofsprings(ind_rpn, mutation_rate):
-
-    ofsprings = {}
-
-    #print(ind_rpn.Conv3x3.filters[0][0][0])
-
-    for i in range(200):
-        temp = copy.deepcopy(ind_rpn)
-        temp.mutate(mutation_rate)
-        #print(temp.Conv3x3.filters[0][0][0])
-        ofsprings[temp] = []
-
-    return ofsprings
-
 
 def model_saving(model, loss):
     path = getcwd()
@@ -148,35 +139,20 @@ def model_saving(model, loss):
 
 if __name__ == '__main__':
 
-    ind_rpn = {}
-
     vgg = VGG16_model(IMG_SHAPE)
 
-    print("Load - l" + " Create new - c")
-    while(True):
-        enter = input()
-
-        if enter == 'l':
-            path = getcwd()
-            for i in listdir(path):
-                if isfile(join(path, i)) and 'latest_model_with_' in i:
-                    with open(i, 'rb') as f:
-                        model = load(f)
-                        ind_rpn = create_ofsprings(model, MUTATION_RATE)
-            break
-
-        elif enter == 'c':
-            for i in range(200):
-                ind_rpn[RPN()] = []
-            break
+    r = RPN()
 
     with open("train_data.pickle", 'rb') as f:
         train_data = load(f)
         train_data = np.array(train_data)
 
+
     for epoch in range(NUMBER_OF_EPOCH):
 
         print('--- Epoch %d ---' % (epoch + 1))
+
+        loss = 0
 
         for iteration in range(ITERATIONS):
 
@@ -197,25 +173,21 @@ if __name__ == '__main__':
             # cv2.imshow("test", img)
             # cv2.waitKey()
 
+            pred_anchors = copy.deepcopy(anchors)
+
+            pred_anchors = r.forward_RPN_for_all_anchors(extracted_features, pred_anchors)
+
             target = getTarget(anchors, gr, img)
 
             target = clearTarget(target)
 
-            pred_anchors = copy.deepcopy(anchors)
+            loss += r.getLoss_function(target, pred_anchors, LEARNING_RATE)
 
-            for i in ind_rpn:
-                ind_rpn[i].append(i.getLoss_function(target, pred_anchors, extracted_features))
+        print("Epoch " + str(epoch+1) + " ended with " + str(loss/ITERATIONS) + " loss")
 
-        for i in ind_rpn:
-            ind_rpn[i] = np.sum(ind_rpn[i])/ITERATIONS
+        model_saving(r, loss)
 
-        best_ind = min(ind_rpn.items(), key=operator.itemgetter(1))[0]
 
-        print("Epoch " + str(epoch + 1) + " ends with average loss " + str(ind_rpn[best_ind]))
-
-        model_saving(best_ind, ind_rpn[best_ind])
-
-        ind_rpn = create_ofsprings(best_ind, MUTATION_RATE)
 
 
 

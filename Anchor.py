@@ -1,11 +1,13 @@
 class Anchor:
-    def __init__(self, cls, bbox, iou_rate, points, feature_points, index):
+    def __init__(self, cls, bbox, iou_rate, points, index, num_in_set):
         self.__cls = cls
         self.__bbox = bbox
         self.__iou_rate = iou_rate
         self.__points = points
-        self.__feature_points = feature_points
+        self.__feature = 0
         self.__index = index
+        self.__num_in_set = num_in_set
+        self.__x1_x2 = ()
 
     def getCls(self):
         return self.__cls
@@ -31,14 +33,26 @@ class Anchor:
     def setPoints(self, points):
         self.__points = points
 
-    def getFeaturePoints(self):
-        return self.__feature_points
+    def getFeature(self):
+        return self.__feature
 
-    def setFeaturePoints(self, feature_points):
-        self.__feature_points = feature_points
+    def setFeature(self, feature):
+        self.__feature = feature
 
     def getIndex(self):
         return self.__index
 
     def setIndex(self, index):
         self.__index = index
+
+    def getSetNum(self):
+        return self.__num_in_set
+
+    def setSetNum(self, num_in_set):
+        self.__num_in_set = num_in_set
+
+    def setX1_X2(self, x1_x2):
+        self.__x1_x2 = x1_x2
+
+    def getX1_X2(self):
+        return self.__x1_x2

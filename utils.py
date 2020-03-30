@@ -35,10 +35,10 @@ def bb_intersection_over_union(boxA, boxB):
     return iou
 
 def softmax(x):
-    try:
-        return np.exp(x[0]) / np.sum(np.exp(x), axis=0)
-    except:
-        return x[0] / np.sum(x, axis=0)
+    temp = []
+    for i in x:
+        temp.append(np.exp(i)/np.sum(np.exp(x), axis=0))
+    return temp
 
 def mean_squared_diff(yHat, y):
     yHat = np.array(yHat)
