@@ -23,19 +23,12 @@ class Conv3x3:
         output = np.zeros((h-2, w-2, d))
 
         for i, j, region in self.region_extraction(feature):
-            output[i, j, :] = (np.sum(region * self.filters, axis=(0,1)).reshape((1, 1, 512)))
+            output[i, j, :] = (np.sum(region * self.filters, axis=(0,1)).reshape((1, 1, self.num_of_filters)))
 
         return output
 
     def backpropagate(self, d_L_out, learning_rate):
-
-        d_L_d_filters = np.zeros(self.filters.shape)
-
-        for i, j, im_region in self.region_extraction(self.__last_input):
-            for f in range(self.num_of_filters):
-                d_L_d_filters[:, :, f] += d_L_out[:, :, f] * im_region[:, :, f]
-
-        self.filters -= learning_rate * d_L_d_filters
+        self.filters -= learning_rate * d_L_out
         pass
 
     def mutate(self, mutation_rate):

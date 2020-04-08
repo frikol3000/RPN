@@ -1,15 +1,17 @@
-import cv2
-import csv
 from os import listdir, getcwd, remove
 from os.path import isfile, join
-import numpy as np
-import pickle
-import random
-from VGG16 import VGG16_model
+import cv2
 import generate_anchors as anch
-import RPN
-from Conv3x3 import Conv3x3
-from Conv1x1 import Conv1x1
+from utils import bb_intersection_over_union
+from utils import calc_reggression
+from RPN import RPN
+from VGG16 import VGG16_model
+from pickle import load, dump
+import numpy as np
+import copy
+from utils import CrossEntropy
+from utils import softmax
+import random
 
 TRAIN_DATA_DIR = 'F:\Python Projects\datasetcreator\images\\train\\'
 MUTATION_RATE = 0.02
@@ -94,45 +96,182 @@ def createPoints(img):
 # cv2.imshow("test", img)
 # cv2.waitKey()
 
-from utils import CrossEntropy
-
-def softmax(x):
-    temp = []
-    for i in x:
-        temp.append(np.exp(i)/np.sum(np.exp(x), axis=0))
-    return temp
-
-img = cv2.imread("CARDS_LIVINGROOM_S_H_frame_1716.jpg")
-
-vgg16 = VGG16_model(IMG_SHAPE)
-
-features = vgg16.extract_feature(img)[0]
-
-c = Conv3x3(512)
-
-# print(c.forward(features).shape)
-
 #
-c1x1 = Conv1x1(512, 18)
-temp = c.forward(features)[0, 0, :]
-# print(temp.shape)
-# print(c1x1.forward(temp))
-# print(softmax(c1x1.forward(temp)))
+#
+# from Conv3x3 import Conv3x3
+#
+# vgg = VGG16_model((720, 1280, 3))
+#
+# img = cv2.imread("CARDS_LIVINGROOM_S_H_frame_1716.jpg")
+#
+# features = vgg.extract_feature(img)[0]
+#
+# c = Conv3x3(2)
+#
+# features_conv = features[19:22, 37:40, 0:2]
+# features_conv[0, 0, 1] = 1
+#
+# print(features_conv.shape)
+# print(c.filters[:, :, :])
+# print(c.forward(features_conv))
 
-dict_lab = {}
+# a = np.array(([1,0,0], [0,1,0], [0,0,1], [1,0,0], [0,1,0], [0,0,1]))
+# a = a.reshape((3,3,2))
+#
+# print(a)
 
-loss = 0
-for i in range(1000):
-    for count, k in enumerate([[1, 0], [0, 1]]):
-        for count2, j in enumerate(k):
-            loss += CrossEntropy(softmax(c1x1.forward(temp)[count*2:(count+1)*2])[count2], j)
-            d_l = (softmax(c1x1.forward(temp)[count*2:(count+1)*2])[count2] - j) * temp
-            c1x1.backpropagate(d_l, 0.01, (2*count2)+count)
-    print(c1x1.forward(temp))
-    print(softmax(c1x1.forward(temp)[0:2]), softmax(c1x1.forward(temp)[2:4]), softmax(c1x1.forward(temp)[4:6]))
-    print(loss)
-    loss = 0
-
+from utils import CrossEntropy
+# def softmax(x):
+#     x = x[0][0]
+#     temp = []
+#     for i in x:
+#         temp.append(np.exp(i)/np.sum(np.exp(x), axis=0))
+#     return temp
+#
+# t1 = np.random.uniform(size=(3,3,1))
+# filt = np.random.uniform(size=(3,3,1))
+# filt1x1 = np.random.uniform(size=(1, 1, 2))
+#
+#
+# for i in range(10000):
+#     d_l_conv1x1 = np.zeros((1, 1, 2))
+#     d_l_conv3x3 = np.zeros((3, 3, 1))
+#     for j, t in enumerate([1, 0]):
+#         conv3x3_out = (np.sum(t1 * filt, axis=(0,1)).reshape((1, 1, 1)))
+#         #print(conv3x3_out)
+#         # print(filt1x1)
+#         # print(np.multiply(conv3x3_out, filt1x1))
+#         soft = softmax(np.multiply(conv3x3_out, filt1x1))
+#         # print(filt)
+#         # print(soft)
+#         # print(np.multiply(filt1x1[:,:,0], t1))
+#         print(j, soft[j], t)
+#         d_l_conv1x1[:, :, j] = (-1) * np.multiply((t - soft[j]), conv3x3_out).reshape((1,1))
+#         d_l_conv3x3 += (-1) * (t - soft[j]) * np.multiply(filt1x1[:,:,j], t1)
+#         #print(d_l_conv1x1)
+#         print(d_l_conv3x3)
+#         print(soft)
+#     #filt1x1 -= 0.01 * d_l_conv1x1
+#     filt -= 0.01 * d_l_conv3x3
+#
+# def getTarget(anchors, gr):
+#
+#     target = []
+#
+#     for i in anchors:
+#         for j in gr:
+#             anch_IOU = bb_intersection_over_union(j, i.getPoints())
+#             if anch_IOU > 0:
+#                 if anch_IOU < 0.3:
+#                     i.setCls(0)
+#                     target.append(i)
+#                 else:
+#                     i.setCls(1)
+#                     i.setBbox(calc_reggression(j, i.getPoints()))
+#                     target.append(i)
+#     return list(dict.fromkeys(target))
+#
+# def clearTarget(target):
+#     cleared_target = {}
+#     object_target = []
+#     nonobject_target = []
+#
+#     for t in range(len(target)):
+#         if target[t].getCls() == 1:
+#             object_target.append(target[t])
+#
+#     for t in range(len(target)):
+#         if target[t].getCls() == 0:
+#             nonobject_target.append(target[t])
+#
+#     # try:
+#     #     target = random.sample(object_target, MINI_BATCH) + random.sample(nonobject_target, MINI_BATCH)
+#     # except:
+#     #     target = object_target + random.sample(nonobject_target, MINI_BATCH)
+#
+#     try:
+#         target = object_target[0:MINI_BATCH] + nonobject_target[0:MINI_BATCH]
+#     except:
+#         target = object_target + nonobject_target[0:MINI_BATCH]
+#
+#     for t in target:
+#         cleared_target[t.getIndex()] = []
+#     for t in target:
+#         cleared_target[t.getIndex()].append(t)
+#
+#     return cleared_target
+#
+# def getModelName():
+#     path = getcwd()
+#     for i in listdir(path):
+#         if isfile(join(path, i)) and 'latest_model_with_' in i:
+#             return i
+#
+# def getGroundTruthBBoxes(train_sample):
+#     gr = []
+#     for i in train_sample:
+#         if isinstance(i, list):
+#             gr.append(i)
+#
+#     return gr
+#
+# r = RPN()
+#
+# vgg = VGG16_model(IMG_SHAPE)
+#
+# with open("train_data.pickle", 'rb') as f:
+#     train_data = load(f)
+#     train_data = np.array(train_data)
+#
+# sample = random.choice(train_data)
+#
+# img = cv2.imread(TRAIN_DATA_DIR + sample[-1])
+#
+# extracted_features = vgg.extract_feature(img)[0]
+#
+# for i in range(250):
+#     loss = 0
+#
+#     gr = getGroundTruthBBoxes(sample)
+#
+#     # img = cv2.resize(img, (600, 800))
+#
+#     img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
+#
+#     pred_anchors = copy.deepcopy(anchors)
+#
+#     pred_anchors = r.forward_RPN_for_all_anchors(extracted_features, pred_anchors)
+#
+#     target = getTarget(anchors, gr)
+#
+#     target = clearTarget(target)
+#
+#     loss += r.getLoss_function(target, pred_anchors, 0.001)
+#
+#     print(loss)
+#
+# img, anchors = anch.generate_anchors(img, createPoints(img)[0], ANCHORS_RATIO, ANCHORS_SIZE)
+#
+# pred_anchors = copy.deepcopy(anchors)
+#
+# pred_anchors = r.forward_RPN_for_all_anchors(extracted_features, pred_anchors)
+#
+# gr = getGroundTruthBBoxes(sample)
+#
+# for g in gr:
+#     img = cv2.rectangle(img, (g[0], g[1]), (g[2], g[3]), (255, 0, 0))
+#
+# proposal_list_and_cls = []
+#
+# for i in pred_anchors:
+#     proposal_list_and_cls.append((i, i.getCls()))
+#
+# proposal_list_and_cls = sorted(proposal_list_and_cls, key=lambda tup: tup[1])
+# for i in range(300):
+#     temp = proposal_list_and_cls[i][0]
+#     img = cv2.rectangle(img, (temp.getPoints()[0], temp.getPoints()[1]), (temp.getPoints()[2], temp.getPoints()[3]), (0, 255, 0))
+# cv2.imshow("test", img)
+# cv2.waitKey()
 
 
 

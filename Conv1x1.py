@@ -12,13 +12,12 @@ class Conv1x1:
         for i in range(self.out):
             output[:, i] = np.sum((np.multiply(self.filters[:, :, :, i], X)))
             # print(self.filters[:,:,:,i])
-
+        #return np.maximum(output[0], 0)
         return output[0]
 
-    def backpropagate(self, d_L, learning_rate, index):
-        self.filters[:, :, :, index] -= (learning_rate * d_L)
+    def backpropagate(self, d_L, learning_rate):
+        self.filters -= (learning_rate * d_L)
         pass
-
 
     def mutate(self, mutation_rate):
         self.filters += np.random.normal(0.0, mutation_rate, (self.filters.shape))

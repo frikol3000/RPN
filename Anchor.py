@@ -4,7 +4,7 @@ class Anchor:
         self.__bbox = bbox
         self.__iou_rate = iou_rate
         self.__points = points
-        self.__feature = 0
+        self.__feature = None
         self.__index = index
         self.__num_in_set = num_in_set
         self.__x1_x2 = ()

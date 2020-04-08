@@ -5,6 +5,7 @@ from utils import CrossEntropy
 from utils import mean_squared_diff
 from utils import calc_reggression
 import numpy as np
+import time
 
 class RPN:
     def __init__(self):
@@ -48,32 +49,49 @@ class RPN:
         feature = self.getFeatures(feature_map)
         for count, i, j, conv_region1x1 in self.getRegion(feature):
             cls = (self.forward_cls(conv_region1x1))
-            bbox = (self.forward_bbox(conv_region1x1))
+            #bbox = (self.forward_bbox(conv_region1x1))
             for k, anch in enumerate(anchors[count*9:(count+1)*9]):
                 anch.setX1_X2(cls[k*2:(k+1)*2])
                 anch.setCls(softmax(cls[k*2:(k+1)*2])[0])
-                anch.setBbox(bbox[k*4:(k+1)*4])
-                anch.setFeature(conv_region1x1)
+                #anch.setBbox(bbox[k*4:(k+1)*4])
+                anch.setFeature((conv_region1x1, feature_map[i:i+3, j:j+3, :]))
         return anchors
 
-    def getLoss_function(self, target, proposals, learn_rate):
+    def getLoss_function(self, target, pred_anchors, learn_rate):
 
         loss = 0
 
+        d_l_cls = np.zeros((1, 1, 512, 18))
+        d_l_conv3x3 = np.zeros((3, 3, 512))
+
         for t in target:
             for anchor in target[t]:
-                for proposal in proposals:
+                for proposal in pred_anchors:
                     if proposal.getPoints() == anchor.getPoints():
-                        if anchor.getCls() == 1:
-                            loss += (1/256) * (CrossEntropy(proposal.getCls(), anchor.getCls()))
-                            d_l = (softmax(proposal.getX1_X2())[0] - anchor.getCls()) * proposal.getFeature()
-                            self.clsConv.backpropagate(d_l, learn_rate, proposal.getSetNum() * 2)
-                        else:
-                            loss += (1 / 256) * (CrossEntropy(proposal.getCls(), anchor.getCls()))
-                            d_l = (anchor.getCls() - softmax(proposal.getX1_X2())[0]) * proposal.getFeature()
-                            self.clsConv.backpropagate(d_l, learn_rate, (proposal.getSetNum() * 2) + 1)
+                        region_featuremap = proposal.getFeature()[1]
+                        feature = proposal.getFeature()[0]
+                        loss += (1 / 256) * (CrossEntropy(proposal.getCls(), anchor.getCls()))
+                        d_l_cls[:, :, :, proposal.getSetNum() * 2] -= (1 / 256) * (
+                                    anchor.getCls() - softmax(proposal.getX1_X2())[
+                                0]) * feature
+                        d_l_cls[:, :, :, (proposal.getSetNum() * 2) + 1] -= (1 / 256) * (
+                                    (1 - anchor.getCls()) - softmax(proposal.getX1_X2())[
+                                1]) * feature
+                        d_l_conv3x3 -= (1 / 256) * (
+                                    (1 - anchor.getCls()) - softmax(proposal.getX1_X2())[1]) * np.multiply(
+                            self.clsConv.filters[:, :, :, (proposal.getSetNum() * 2) + 1],
+                            region_featuremap)
+                        d_l_conv3x3 -= (1 / 256) * (
+                                    anchor.getCls() - softmax(proposal.getX1_X2())[0]) * np.multiply(
+                            self.clsConv.filters[:, :, :, (proposal.getSetNum() * 2)],
+                            region_featuremap)
+                        #print(softmax(proposal.getX1_X2()), anchor.getCls(), (proposal.getX1_X2()))
+                        #print(proposal.getCls(), anchor.getCls())
 
-        print("Loss " + str(loss))
+        #print(d_l_conv3x3)
+        #print(d_l_cls[0][0][100:110, :])
+        self.clsConv.backpropagate(d_l_cls, learn_rate)
+        self.Conv3x3.backpropagate(d_l_conv3x3, learn_rate)
 
         return loss
 
