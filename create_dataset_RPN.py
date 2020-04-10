@@ -13,24 +13,32 @@ from utils import CrossEntropy
 from utils import softmax
 import random
 import time
+from nms import non_max_suppression_slow
 
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 NUMBER_OF_EPOCH = 200
 ITERATIONS = 10
 BATCH = 500
-MINI_BATCH = 128
-IMG_SHAPE = (720, 1280, 3)
+MINI_BATCH = 90
+IMG_SHAPE = (480, 640, 3)
 
 TRAIN_DATA_DIR = 'F:\Python Projects\Faster - RCNN\images\\train\\'
 TEST_DATA_DIR = ""
-ANCHORS_RATIO = [(1, 1), (0.8, 1.2), (1.2, 0.8)]
-ANCHORS_SIZE = [96**2, 128**2, 256**2]
+ANCHORS_RATIO = [(1, 1), (0.7, 1.3), (1.3, 0.7)]
+ANCHORS_SIZE = [96**2, 128**2, 156**2]
+
+vgg = VGG16_model(IMG_SHAPE)
+
+def getModelName():
+    path = getcwd()
+    for i in listdir(path):
+        if isfile(join(path, i)) and 'latest_model_with_' in i:
+            return i
 
 def getGroundTruthBBoxes(train_sample):
     gr = []
-    for i in train_sample:
-        if isinstance(i, list):
-            gr.append(i)
+    for i in train_sample["bboxes"]:
+        gr.append(i[1])
 
     return gr
 
@@ -85,6 +93,11 @@ def clearTarget(target):
         if target[t].getCls() == 0:
             nonobject_target.append(target[t])
 
+    if len(object_target) < MINI_BATCH:
+        object_target = object_target + object_target
+
+    #print(len(object_target))
+
     try:
         target = random.sample(object_target, MINI_BATCH) + random.sample(nonobject_target, MINI_BATCH)
     except:
@@ -111,17 +124,15 @@ def model_saving(model, loss):
     with open("latest_model_with_" + str(loss) + "_loss.pickle", "wb") as f:
         dump(model, f)
 
-def getModelName():
-    path = getcwd()
-    for i in listdir(path):
-        if isfile(join(path, i)) and 'latest_model_with_' in i:
-            return i
+with open(getModelName(), 'rb') as R:
+    r = load(R)
+    print("Loaded last model " + str(getModelName()))
+
 
 if __name__ == '__main__':
-
     vgg = VGG16_model(IMG_SHAPE)
 
-    while(1):
+    while (1):
         ch = input("Load - l, Create - c\n")
         if ch == "l":
             with open(getModelName(), 'rb') as R:
@@ -137,7 +148,6 @@ if __name__ == '__main__':
 
     with open("train_set.pickle", 'rb') as f:
         train_data = load(f)
-        train_data = np.array(train_data)
 
     for epoch in range(NUMBER_OF_EPOCH):
 
@@ -145,13 +155,13 @@ if __name__ == '__main__':
 
         loss = 0
 
-        sample = random.sample(list(train_data), BATCH)
+        sample = random.sample(train_data, BATCH)
 
         print('--- Epoch %d ---' % (epoch + 1))
 
         for single_sample in sample:
 
-            img = cv2.imread(TRAIN_DATA_DIR + single_sample[-1])
+            img = cv2.imread(single_sample['dir'])
 
             extracted_features = vgg.extract_feature(img)[0]
 
@@ -168,6 +178,8 @@ if __name__ == '__main__':
 
             pred_anchors = r.forward_RPN_for_all_anchors(extracted_features, pred_anchors)
 
+            print(len(anchors))
+
             # for i in pred_anchors:
             #    if i.getCls() > 0.9999:
             #     img = cv2.rectangle(img, (i.getPoints()[0], i.getPoints()[1]), (i.getPoints()[2], i.getPoints()[3]), (0, 255, 0))
@@ -177,6 +189,23 @@ if __name__ == '__main__':
             target = getTarget(anchors, gr)
 
             target = clearTarget(target)
+
+            # counter = 0
+            #
+            # for t in target:
+            #     for anchor in target[t]:
+            #         if anchor.getCls() == 1:
+            #             counter += 1
+            #             img = cv2.rectangle(img, (anchor.getPoints()[0], anchor.getPoints()[1]), (anchor.getPoints()[2], anchor.getPoints()[3]), (0, 255, 0))
+            #
+            # print(counter)
+            # cv2.imshow("Test", img)
+            # cv2.waitKey()
+
+            # for t in target:
+            #     for anchor in target[t]:
+            #         if anchor.getCls() != -1:
+            #             print(anchor.getCls())
 
             # dict = {1: [886, 585, 1001, 662], 0:[880, 560, 1008, 688]}
             #
@@ -239,8 +268,15 @@ if __name__ == '__main__':
 
             loss += r.getLoss_function(target, pred_anchors, LEARNING_RATE)
 
-        print("Epoch " + str(epoch+1) + " ended with " + str(loss/BATCH) + " average loss and took %.2f seconds" %(time.time() - t1))
-        model_saving(r, loss/BATCH)
+        print("Epoch " + str(epoch + 1) + " ended with " + str(
+            loss / BATCH) + " average loss and took %.2f seconds" % (time.time() - t1))
+        model_saving(r, loss / BATCH)
+
+
+
+
+
+
 
 
 

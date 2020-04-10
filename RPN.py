@@ -63,6 +63,7 @@ class RPN:
 
         d_l_cls = np.zeros((1, 1, 512, 18))
         d_l_conv3x3 = np.zeros((3, 3, 512))
+        d_l_bbox = np.zeros((1, 1, 512, 36))
 
         for t in target:
             for anchor in target[t]:
@@ -70,18 +71,18 @@ class RPN:
                     if proposal.getPoints() == anchor.getPoints():
                         region_featuremap = proposal.getFeature()[1]
                         feature = proposal.getFeature()[0]
-                        loss += (1 / 256) * (CrossEntropy(proposal.getCls(), anchor.getCls()))
-                        d_l_cls[:, :, :, proposal.getSetNum() * 2] -= (1 / 256) * (
+                        loss += (1 / 180) * (CrossEntropy(proposal.getCls(), anchor.getCls()))# + anchor.getCls() * (1/2106) * (mean_squared_diff(anchor.getBbox(), proposal.getBbox()))
+                        d_l_cls[:, :, :, proposal.getSetNum() * 2] -= (1 / 180) * (
                                     anchor.getCls() - softmax(proposal.getX1_X2())[
                                 0]) * feature
-                        d_l_cls[:, :, :, (proposal.getSetNum() * 2) + 1] -= (1 / 256) * (
+                        d_l_cls[:, :, :, (proposal.getSetNum() * 2) + 1] -= (1 / 180) * (
                                     (1 - anchor.getCls()) - softmax(proposal.getX1_X2())[
                                 1]) * feature
-                        d_l_conv3x3 -= (1 / 256) * (
+                        d_l_conv3x3 -= (1 / 180) * (
                                     (1 - anchor.getCls()) - softmax(proposal.getX1_X2())[1]) * np.multiply(
                             self.clsConv.filters[:, :, :, (proposal.getSetNum() * 2) + 1],
                             region_featuremap)
-                        d_l_conv3x3 -= (1 / 256) * (
+                        d_l_conv3x3 -= (1 / 180) * (
                                     anchor.getCls() - softmax(proposal.getX1_X2())[0]) * np.multiply(
                             self.clsConv.filters[:, :, :, (proposal.getSetNum() * 2)],
                             region_featuremap)

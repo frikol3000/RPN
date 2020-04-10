@@ -46,12 +46,18 @@ def mean_squared_diff(yHat, y):
     return np.sum(np.square(yHat-y))
 
 def calc_reggression(bbox, anchor):
-    x, y, h, w = (bbox[0] - bbox[2])/2, (bbox[1] - bbox[3])/2, np.abs(bbox[1] - (bbox[1] - bbox[3])/2), np.abs(bbox[0] - (bbox[0] - bbox[2])/2)
-    xA, yA, hA, wA = (anchor[0] - anchor[2]) / 2, (anchor[1] - anchor[3]) / 2, np.abs(anchor[1] - (anchor[1] - anchor[3]) / 2), np.abs(anchor[0] - (anchor[0] - anchor[2]) / 2)
+    # x, y, h, w = (bbox[0] - bbox[2])/2, (bbox[1] - bbox[3])/2, np.abs(bbox[1] - (bbox[1] - bbox[3])/2), np.abs(bbox[0] - (bbox[0] - bbox[2])/2)
+    # xA, yA, hA, wA = (anchor[0] - anchor[2]) / 2, (anchor[1] - anchor[3]) / 2, np.abs(anchor[1] - (anchor[1] - anchor[3]) / 2), np.abs(anchor[0] - (anchor[0] - anchor[2]) / 2)
+    x, y, h, w = bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]
+    xA, yA, hA, wA = anchor[0], anchor[1], anchor[2] - anchor[0], anchor[3] - anchor[1]
+
 
     tx = (x-xA)/wA
     ty = (y-yA)/hA
     th = np.log(h/hA)
     tw = np.log(w/wA)
+
+    #print(x, y, h, w, xA, yA, hA, wA)
+    #print(bbox, anchor, [tx, ty, th, tw])
 
     return [tx, ty, th, tw]
